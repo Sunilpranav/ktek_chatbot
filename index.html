@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Krish – K-TEK Chatbot</title>
+<link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-dark: #0d1117;
+  --chat-bg: #161b22;
+  --user-msg: #0078ff;
+  --bot-msg: #263238;
+  --text-color: #f0f6fc;
+  --accent: #00bcd4;
+}
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-color);
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+.chat-box {
+  width: 90%;
+  max-width: 700px;
+  background: var(--chat-bg);
+  border-radius: 16px;
+  box-shadow: 0 0 25px rgba(0, 188, 212, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.header {
+  background: #0d47a1;
+  padding: 15px;
+  text-align: center;
+  color: #fff;
+  font-size: 1.3em;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 10px rgba(0, 188, 212, 0.4);
+}
+#chat {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-behavior: smooth;
+}
+.message {
+  padding: 12px 16px;
+  border-radius: 10px;
+  max-width: 80%;
+  word-wrap: break-word;
+  line-height: 1.5;
+  opacity: 0;
+  animation: fadeIn 0.3s forwards;
+  white-space: pre-wrap;
+}
+.user {
+  align-self: flex-end;
+  background: var(--user-msg);
+  color: #fff;
+  border-top-right-radius: 0;
+}
+.bot {
+  align-self: flex-start;
+  background: var(--bot-msg);
+  border-top-left-radius: 0;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.input-area {
+  display: flex;
+  padding: 10px;
+  border-top: 1px solid #333;
+  background: #0d1117;
+}
+input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #444;
+  background: #1e1e1e;
+  color: white;
+  font-size: 1em;
+  outline: none;
+}
+button {
+  margin-left: 10px;
+  padding: 0 20px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+button:hover {
+  background: #0097a7;
+}
+.typing {
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+  font-style: italic;
+  color: #bbb;
+  animation: pulseGlow 1.5s infinite;
+}
+@keyframes pulseGlow {
+  0%, 100% { text-shadow: 0 0 5px #00bcd4; opacity: 1; }
+  50% { text-shadow: 0 0 15px #00e5ff; opacity: 0.8; }
+}
+
+/* Enhanced code block styling */
+pre {
+  background: #0b0f14;
+  border: 1px solid #1e2a35;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-family: "Consolas", "Fira Code", monospace;
+  color: #c9d1d9;
+  line-height: 1.6;
+  margin-top: 10px;
+  position: relative;
+  box-shadow: 0 0 15px rgba(0,188,212,0.15);
+  overflow-x: auto;
+  animation: glowIn 0.5s ease-in-out;
+}
+@keyframes glowIn {
+  from { opacity: 0; transform: translateY(5px); box-shadow: none; }
+  to { opacity: 1; transform: translateY(0); box-shadow: 0 0 15px rgba(0,188,212,0.15); }
+}
+
+/* Copy Button */
+.copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: #00bcd4;
+  color: black;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.8em;
+  transition: 0.3s;
+}
+.copy-btn:hover { background: #00e5ff; color: #000; }
+
+/* Syntax colors */
+.token-keyword { color: #4f9cff; }
+.token-string { color: #ce9178; }
+.token-comment { color: #6a9955; font-style: italic; }
+.token-function { color: #82aaff; }
+.token-class { color: #c586c0; }
+.token-number { color: #b5cea8; }
+.token-print { color: #56d364; }
+.token-input { color: #00e5ff; }
+</style>
+</head>
+<body>
+<div class="chat-box">
+  <div class="header">🤖 Krish – K-TEK Assistant</div>
+  <div id="chat"></div>
+  <div class="input-area">
+    <input id="userInput" placeholder="Ask Krish anything..." autofocus>
+    <button id="sendBtn">Send</button>
+  </div>
+</div>
+
+<script>
+const chat = document.getElementById("chat");
+const input = document.getElementById("userInput");
+const sendBtn = document.getElementById("sendBtn");
+
+sendBtn.onclick = () => sendMessage();
+input.addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
+
+function sendMessage() {
+  const msg = input.value.trim();
+  if (!msg) return;
+  addMessage(msg, "user");
+  input.value = "";
+  showThinking();
+
+  fetch("/ask", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({message: msg})
+  })
+  .then(res => res.json())
+  .then(data => {
+    removeThinking();
+    typeWriterEffect(data.response, "bot");
+  })
+  .catch(() => {
+    removeThinking();
+    addMessage("⚠️ Sorry, something went wrong. Please try again.", "bot");
+  });
+}
+
+function addMessage(text, sender) {
+  const div = document.createElement("div");
+  div.className = `message ${sender}`;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function typeWriterEffect(text, sender) {
+  const div = document.createElement("div");
+  div.className = `message ${sender}`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+
+  if (text.includes("```")) {
+    const parts = text.split(/```/);
+    let index = 0;
+    function nextPart() {
+      if (index >= parts.length) return;
+      if (index % 2 === 0) {
+        typeText(parts[index], div, nextPart);
+      } else {
+        const pre = document.createElement("pre");
+        const code = highlightSyntax(parts[index]);
+        pre.innerHTML = `<button class='copy-btn' onclick='copyCode(this)'>Copy</button><code></code>`;
+        const codeBlock = pre.querySelector("code");
+        chat.appendChild(pre);
+        chat.scrollTop = chat.scrollHeight;
+        typeCodeEffect(code, codeBlock, nextPart);
+      }
+      index++;
+    }
+    nextPart();
+  } else {
+    typeText(text, div);
+  }
+}
+
+function typeText(text, el, callback) {
+  let i = 0;
+  const speed = 15;
+  function typing() {
+    if (i < text.length) {
+      el.innerHTML += text.charAt(i);
+      chat.scrollTop = chat.scrollHeight;
+      i++;
+      setTimeout(typing, speed);
+    } else if (callback) callback();
+  }
+  typing();
+}
+
+// 🔹 Animated typing for code blocks
+function typeCodeEffect(html, el, callback) {
+  const temp = document.createElement("div");
+  temp.innerHTML = html;
+  const nodes = Array.from(temp.childNodes);
+  let i = 0;
+  function showNext() {
+    if (i < nodes.length) {
+      el.appendChild(nodes[i].cloneNode(true));
+      chat.scrollTop = chat.scrollHeight;
+      i++;
+      setTimeout(showNext, 10);
+    } else if (callback) callback();
+  }
+  showNext();
+}
+
+function highlightSyntax(code) {
+  return code
+    .replace(/\b(public|class|static|void|int|String|return|if|else|for|while|import|new|boolean|float|double)\b/g, '<span class="token-keyword">$1</span>')
+    .replace(/("[^"]*"|'.*?')/g, '<span class="token-string">$1</span>')
+    .replace(/(System\.out\.println)/g, '<span class="token-print">$1</span>')
+    .replace(/(Scanner)/g, '<span class="token-class">$1</span>')
+    .replace(/(\/\/.*?$)/gm, '<span class="token-comment">$1</span>')
+    .replace(/\b([0-9]+)\b/g, '<span class="token-number">$1</span>');
+}
+
+function copyCode(btn) {
+  const code = btn.parentElement.textContent.replace("Copy", "");
+  navigator.clipboard.writeText(code);
+  btn.textContent = "✅ Copied!";
+  setTimeout(() => btn.textContent = "Copy", 1500);
+}
+
+function showThinking() {
+  const thinking = document.createElement("div");
+  thinking.className = "typing";
+  thinking.id = "thinking";
+  thinking.innerHTML = "Krish is thinking...";
+  chat.appendChild(thinking);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function removeThinking() {
+  const thinking = document.getElementById("thinking");
+  if (thinking) thinking.remove();
+}
+</script>
+</body>
+</html>
